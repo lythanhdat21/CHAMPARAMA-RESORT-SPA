@@ -1,0 +1,53 @@
+import logging
+import os
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+
+from app.api.routes import auth, devices, health, rooms, stays
+from app.core.config import settings
+from app.core.mqtt_client import mqtt_client
+
+logging.basicConfig(level=logging.INFO)
+
+os.makedirs(settings.upload_dir, exist_ok=True)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    mqtt_client.connect()
+    yield
+    mqtt_client.disconnect()
+
+
+app = FastAPI(title="Opera Bridge - Demo Project", version="0.1.0", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
+
+app.include_router(health.router)
+app.include_router(auth.router)
+app.include_router(stays.router)
+app.include_router(rooms.router)
+app.include_router(devices.router)
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    detail = exc.detail
+    if isinstance(detail, dict):
+        return JSONResponse(status_code=exc.status_code, content=detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"message": str(detail), "status": "error"},
+    )
