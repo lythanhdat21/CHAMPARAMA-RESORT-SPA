@@ -108,7 +108,13 @@ class MqttClient:
         if not settings.mqtt_enabled or self._client is None:
             logger.info("[MQTT đang tắt] sẽ publish topic=%s payload=%s", topic, body)
             return
-        self._client.publish(topic, body, qos=2)
+        result = self._client.publish(topic, body, qos=2)
+        if result.rc == mqtt.MQTT_ERR_SUCCESS:
+            # rc=SUCCESS chỉ nghĩa là client đã gửi đi/xếp hàng gửi thành công tới broker,
+            # KHÔNG đảm bảo broker hoặc thiết bị đầu cuối (RCU) đã nhận/xử lý.
+            logger.info("MQTT đã gửi topic=%s payload=%s", topic, body)
+        else:
+            logger.warning("MQTT gửi thất bại (rc=%s) topic=%s payload=%s", result.rc, topic, body)
 
     # ---- [PMS] Check-in / Check-out ----
 

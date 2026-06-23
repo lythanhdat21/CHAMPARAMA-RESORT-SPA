@@ -8,7 +8,7 @@ import { requestMakeUpRoom } from "@/api/actionsApi";
 import type { ApiErrorBody } from "@/types/api";
 
 export default function MakeUpRoomCard() {
-  const [roomNumber, setRoomNumber] = useState("11");
+  const [roomNumber, setRoomNumber] = useState("201");
   const [submitting, setSubmitting] = useState(false);
 
   const handleRequest = async () => {

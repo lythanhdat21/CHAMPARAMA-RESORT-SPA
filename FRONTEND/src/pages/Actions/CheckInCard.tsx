@@ -7,9 +7,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { checkIn } from "@/api/actionsApi";
 import type { ApiErrorBody } from "@/types/api";
 
+// Theo seed thật trong DB (BACKEND/opera-bridge/README.md mục "Dữ liệu mẫu") — mỗi loại phòng
+// kèm room_number của phòng đầu tiên thuộc loại đó, để chọn Room Name là tự điền đúng Room Number.
+const ROOM_TYPE_OPTIONS = [
+  { name: "Disabled", roomNumber: "101" },
+  { name: "Premium King", roomNumber: "201" },
+  { name: "Premium King 2", roomNumber: "501" },
+  { name: "Premium Twin", roomNumber: "801" },
+  { name: "Deluxe Twin", roomNumber: "1101" },
+  { name: "Deluxe Twin 2", roomNumber: "2301" },
+  { name: "Deluxe Twin 3", roomNumber: "2501" },
+  { name: "Deluxe King", roomNumber: "3201" },
+  { name: "Deluxe King 2", roomNumber: "3401" },
+  { name: "Junior Suite Twin", roomNumber: "3601" },
+  { name: "Junior Suite King", roomNumber: "3901" },
+  { name: "Grand Suite", roomNumber: "4101" },
+];
+
 export default function CheckInCard() {
-  const [roomNumber, setRoomNumber] = useState("11");
-  const [roomName, setRoomName] = useState("Premium King");
+  const [roomNumber, setRoomNumber] = useState(ROOM_TYPE_OPTIONS[1].roomNumber);
+  const [roomName, setRoomName] = useState(ROOM_TYPE_OPTIONS[1].name);
   const [username, setUsername] = useState("Tony Lee");
   const [gender, setGender] = useState<"Male" | "Female">("Male");
   const [phoneNumber, setPhoneNumber] = useState("0123456789");
@@ -60,11 +77,27 @@ export default function CheckInCard() {
           </div>
           <div className="space-y-1">
             <Label htmlFor="ci-room-name">Room Name</Label>
-            <Input
+            <select
               id="ci-room-name"
               value={roomName}
-              onChange={(e) => setRoomName(e.target.value)}
-            />
+              onChange={(e) => {
+                const option = ROOM_TYPE_OPTIONS.find((o) => o.name === e.target.value);
+                if (option) {
+                  setRoomName(option.name);
+                  setRoomNumber(option.roomNumber);
+                }
+              }}
+              className="w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm"
+            >
+              {ROOM_TYPE_OPTIONS.map((option) => (
+                <option key={option.name} value={option.name}>
+                  {option.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Chọn loại phòng sẽ tự điền Room Number của phòng đầu tiên thuộc loại đó.
+            </p>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-3">
