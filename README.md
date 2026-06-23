@@ -54,3 +54,13 @@ Mở http://localhost:5173/register → tạo 1 Receptionist + 1 Customer (nhớ
 
 Mở DevTools (F12) → tab Console để xem kết quả mỗi lần bấm nút (không hiện trên UI, đúng thiết kế demo).
 
+
+
+==============================================
+
+Nhờ AI project thì dựa vào file: 
+
+BACKEND\\SKILLS\\WORK\_LOG.md
+
+BACKEND\\SKILLS\\DATABASE\_\&\_API.md
+
