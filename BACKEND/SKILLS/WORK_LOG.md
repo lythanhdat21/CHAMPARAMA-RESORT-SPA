@@ -472,3 +472,29 @@ rebuild).
 Đã verify đầy đủ: `tsc --noEmit` sạch, query Postgres trực tiếp khớp đúng bảng, và Playwright
 thật trên Chromium — default Room Number=1001/Room Name=Premium King khớp nhau, Check-in/Check-out
 trên phòng 1001 trả về đúng `room_name: "Premium King"` (screenshot xác nhận).
+
+## 16. Sửa README outdated + verify lại MQTT cho cả 4 nút (2026-06-24)
+
+**a) `opera-bridge/README.md` có 1 dòng đã lỗi thời:** mục "Giới hạn của bản demo" còn ghi "chưa
+có cơ chế retry khi mất kết nối" — nhưng việc này đã sửa từ mục 13 (`connect_async` +
+`reconnect_delay_set`). Đã sửa lại câu cho đúng + thêm đoạn giải thích hành vi an toàn này vào
+mục "Tích hợp MQTT" (không crash app, tự retry nền 1s→30s).
+
+**b) User yêu cầu publish MQTT cho cả 4 nút (Check-in/Check-out/DND/Request room cleaning)** —
+việc này **đã làm từ mục 13-14**, không phải yêu cầu mới; user có thể chưa nhớ. Đã kiểm tra lại
+code (`stay_service.py`, `room_service.py`, `mqtt_client.py`) — vẫn nguyên, cả 4 action đều gọi
+đúng hàm publish.
+
+**Phát hiện quan trọng:** broker `192.168.1.102` trong `.env` của user là **địa chỉ LAN riêng của
+máy user, KHÔNG reach được từ môi trường Claude đang chạy** (sandbox khác mạng). Vì vậy không thể
+verify trực tiếp với broker thật của user — đã dựng 1 Mosquitto tạm (đổi `.env` → `MQTT_BROKER_
+HOST=mqtt-probe2` tạm thời), verify bằng subscriber độc lập + bấm đủ 4 nút qua Playwright thật:
+bắt được đúng 4 message (`PMS/CHECKIN`, `RCU/ROOMSERVICECONTROL` dnd, `PMS/CHECKOUT`,
+`RCU/ROOMSERVICECONTROL` mur) đúng thứ tự, đúng payload. **Sau đó đã trả `.env` lại đúng
+`MQTT_BROKER_HOST=192.168.1.102` ban đầu** — user cần tự bấm thử trên máy mình và xem
+`docker compose logs api -f` để xác nhận với broker thật của họ (Claude không reach được).
+
+**Lưu ý cho session sau:** mỗi khi cần test MQTT thật, **luôn dùng broker tạm (Mosquitto qua
+Docker) trong môi trường này**, không cố gắng kết nối broker LAN của user (`192.168.1.102` hay
+tương tự) — sẽ luôn timeout vì khác mạng. Nhớ trả `.env` lại giá trị gốc của user sau khi test
+xong.
