@@ -383,3 +383,92 @@ thật trong lúc test (quên `app.include_router(devices.router)` trong `main.p
 
 **Chưa làm:** chưa test với RCU thật (chỉ test với Mosquitto local), chưa có cơ chế
 retry/reconnect khi mất kết nối broker.
+
+**Cập nhật 2026-06-23 — sửa bug MQTT làm sập cả backend:** user báo `docker compose up --build`
+lỗi `TimeoutError` từ `paho/mqtt/client.py` → `Application startup failed. Exiting.` (container
+api chết hẳn). Nguyên nhân: `client.connect()` là lệnh đồng bộ — khi broker (`192.168.1.102`
+trong `.env` của user) không tới được, nó raise exception ngay trong `lifespan` lúc app khởi
+động, kéo sập toàn bộ FastAPI/Uvicorn, không riêng phần MQTT.
+
+Đã sửa `app/core/mqtt_client.py`:
+- Đổi `client.connect()` → `client.connect_async()` (không block, không raise lúc startup —
+  việc kết nối thật được paho-mqtt thực hiện trong loop thread phía sau, qua `loop_start()`).
+- Bọc thêm `try/except (OSError, ValueError)` quanh việc khởi tạo, log warning thay vì để
+  exception lan ra ngoài.
+- Thêm `client.reconnect_delay_set(min_delay=1, max_delay=30)` + callback `on_disconnect` để
+  log khi mất kết nối (trước đó im lặng, user không biết MQTT đang retry ngầm).
+
+Đã verify thật: rebuild với chính `.env` đang lỗi của user (`MQTT_BROKER_HOST=192.168.1.102`,
+không tới được lúc test) — backend khởi động thành công, `/health` trả 200, container sống ổn
+định, không crash/restart. Paho-mqtt tự retry kết nối nền, không cần can thiệp khi broker online
+lại.
+
+## 14. Frontend: popup kết quả action + dịch tiếng Anh + style (2026-06-23)
+
+Sau khi có popup Check-in (mục 13 phần đầu chỉ làm backend, popup là việc riêng ở Frontend), user
+yêu cầu liên tiếp các cải tiến UI cho `FRONTEND/src/pages/Actions/`:
+
+1. **Popup kết quả cho cả 4 action** (Check-in/Check-out/DND/Make-up-room), không chỉ
+   `console.log` như bản gốc — dùng component `Dialog` mới tạo tại
+   `FRONTEND/src/components/ui/dialog.tsx` (Base UI `@base-ui/react/dialog`, theo đúng convention
+   của `select.tsx` có sẵn). Mỗi popup hiện: ghi chú nguồn dữ liệu + Endpoint thật của action đó,
+   các field liên quan (tên khách/giới tính/tên phòng/số phòng/...), và dòng kết quả
+   ("Check-in successful", "Do Not Disturb turned ON/OFF successfully"...).
+2. **Mỗi card** cũng có dòng ghi chú endpoint dưới tiêu đề (vd "Data is fetched/written via the
+   Opera Bridge backend — Endpoint: POST /api/stays/check-in") — user yêu cầu ghi rõ đây là
+   endpoint thật của backend Opera Bridge, KHÔNG phải Oracle OPERA Cloud thật (project chưa nối
+   Oracle, xem mục 11-12) — đã từ chối ghi nhãn "OPERA CLOUD" gây hiểu lầm, giải thích rõ với user
+   trước khi sửa.
+3. **Style**: dòng ghi chú endpoint/nguồn dữ liệu = đậm + in nghiêng + xanh dương nổi bật
+   (`font-bold italic text-blue-600 dark:text-blue-400`); dòng kết quả thành công = đậm + xanh lá
+   (`font-bold text-green-700 dark:text-green-400`).
+4. **Dịch toàn bộ chữ tiếng Việt trong UI Actions sang tiếng Anh** (popup, label form, nút bấm,
+   header trang `/actions` — "Xin chào"→"Welcome", "Đăng xuất"→"Logout", "Bật DND"→"Turn DND On"...).
+   Chỉ giữ lại 1 dòng comment code (không hiển thị UI) bằng tiếng Việt.
+5. **Room Name** trong Check-in đổi từ ô nhập text tự do thành **dropdown chọn loại phòng**, chọn
+   xong tự điền đúng Room Number của phòng đầu tiên thuộc loại đó — sửa lỗi gốc: trước đó Room
+   Name là field độc lập, gõ gì cũng bị backend bỏ qua (chỉ dùng để hiển thị/log), khiến user nhầm
+   là chọn sai do hiểu lầm 2 field liên kết với nhau.
+
+**Tất cả đã verify bằng Playwright thật trên Chromium** (không chỉ sửa code rồi suy đoán) — đăng
+nhập Receptionist/Customer thật, bấm từng nút, đọc nội dung popup + screenshot xác nhận đúng từng
+lần sửa. Phát hiện 1 lỗi thật lúc test Playwright: locator `text=Check in` khớp nhầm cả
+`CardTitle` (không phải nút) — phải đổi sang `getByRole("button", { name: "Check in", exact: true })`.
+
+## 15. Đổi lại số phòng Premium King thành 1001–1021 (2026-06-23)
+
+User hỏi rõ nguồn gốc bảng số phòng ở mục 13 ("bạn lấy từ đâu, hay bịa ra?") — đã trả lời thẳng:
+**tên loại + số lượng là thật** (từ ảnh `Tên phòng và số phòng.jpg`), nhưng **số phòng cụ thể là
+Claude tự đặt** (ảnh không cho số phòng/tầng). Sau khi xác nhận, user yêu cầu: Premium King phải
+là `1001`–`1021` (không phải `201` như cũ), các loại còn lại "chỉnh sao cho hợp lý".
+
+Vì Premium King vốn nằm ngay sau Disabled trong thứ tự ảnh nhưng giờ phải dời tới tầng 10, Claude
+đề xuất bảng sắp lại toàn bộ (không có sơ đồ thật, vẫn là tự đặt — đã nói rõ với user trước khi
+làm, không âm thầm bịa tiếp): bỏ giới hạn 10 phòng/tầng cũ (mỗi tầng tối đa 99 phòng, 2 chữ số),
+mỗi loại 1 tầng riêng (trừ Deluxe Twin 120 phòng phải tách 2 tầng vì >99). User xác nhận dùng bảng
+này.
+
+**Bảng tầng/room_number mới** (xem đầy đủ trong `opera-bridge/README.md` mục "Dữ liệu mẫu"):
+Disabled tầng1 (101-107), Premium King 2 tầng2 (201-221), Premium Twin tầng3 (301-321), Deluxe
+Twin tầng4-5 (401-521), Deluxe Twin 2 tầng6 (601-619), Deluxe Twin 3 tầng7 (701-763), Deluxe King
+tầng8 (801-812), Deluxe King 2 tầng9 (901-919), **Premium King tầng10 (1001-1021)**, Junior Suite
+Twin tầng11 (1101-1121), Junior Suite King tầng12 (1201-1220), Grand Suite tầng13 (1301-1321).
+Tổng vẫn đúng 365 phòng/12 loại, không trùng room_number (verify bằng script Python độc lập trước
+khi sửa migration, rồi verify lại bằng query Postgres thật sau khi `docker compose down -v` +
+rebuild).
+
+**Đã sửa:**
+- `alembic/versions/001_initial_schema.py` — thay thuật toán sinh phòng cũ (10 phòng/tầng, tuần
+  tự theo ảnh) bằng `ROOM_BLOCKS` khai báo rõ (code, tầng, số lượng) từng block, cho phép số
+  lượng phòng/tầng khác nhau và Premium King neo cứng tầng 10.
+- Frontend `CheckInCard.tsx`: cập nhật lại toàn bộ `ROOM_TYPE_OPTIONS` (room_number mới theo từng
+  loại), đổi cách chọn default sang tìm theo tên "Premium King" (`.find()`) thay vì index cứng —
+  tránh lặp lại lỗi lệch index nếu thứ tự danh sách đổi lần sau.
+- `CheckOutCard.tsx`, `DndCard.tsx`, `MakeUpRoomCard.tsx`: đổi default Room Number từ `201` sang
+  `1001`.
+- Postman collection: đổi toàn bộ room `201` → `1001` (sed toàn file, đã kiểm tra JSON hợp lệ).
+- `README.md`: cập nhật bảng tầng/room_number mới + thêm cột "tầng".
+
+Đã verify đầy đủ: `tsc --noEmit` sạch, query Postgres trực tiếp khớp đúng bảng, và Playwright
+thật trên Chromium — default Room Number=1001/Room Name=Premium King khớp nhau, Check-in/Check-out
+trên phòng 1001 trả về đúng `room_name: "Premium King"` (screenshot xác nhận).

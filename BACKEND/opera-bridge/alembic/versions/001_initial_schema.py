@@ -17,59 +17,71 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 # Theo bảng số lượng phòng trong "BACKEND/SKILLS/FILES/Tên phòng và số phòng.jpg"
-# (12 loại phòng, tổng 365 phòng). Ảnh không cho số phòng/tầng cụ thể, nên room_number
-# và floor ở đây là quy ước tự đặt: mỗi tầng tối đa 10 phòng, room_number = "{floor}{vị
-# trí trong tầng:02d}" (vd tầng 2 phòng thứ 1 -> "201"), các loại phòng được xếp tầng
-# liên tiếp theo đúng thứ tự trong ảnh. Khi có sơ đồ tầng/số phòng thật (hoặc lấy được
-# qua RCU Device List - SMARTHOTEL/STATUS/[hotelId]/RCU/DEVICELIST) cần thay lại seed
+# (12 loại phòng, tổng 365 phòng). Ảnh không cho số phòng/tầng cụ thể. room_number/floor
+# dưới đây là quy ước tự đặt theo yêu cầu của user (2026-06-23): Premium King cố định
+# 1001-1021 (tầng 10), các loại còn lại xếp vào các tầng còn trống sao cho liền mạch,
+# không chồng số — KHÔNG phải sơ đồ tầng thật của khách sạn. Khi có sơ đồ thật (hoặc lấy
+# được qua RCU Device List - SMARTHOTEL/STATUS/[hotelId]/RCU/DEVICELIST) cần thay lại seed
 # này cho khớp thực tế.
 ROOM_TYPE_DEFS = [
-    {"code": "DISABLED", "name": "Disabled", "max_guests": 2, "count": 7},
-    {"code": "PK", "name": "Premium King", "max_guests": 2, "count": 21},
-    {"code": "PK2", "name": "Premium King 2", "max_guests": 2, "count": 21},
-    {"code": "PT", "name": "Premium Twin", "max_guests": 2, "count": 21},
-    {"code": "DT", "name": "Deluxe Twin", "max_guests": 2, "count": 120},
-    {"code": "DT2", "name": "Deluxe Twin 2", "max_guests": 2, "count": 19},
-    {"code": "DT3", "name": "Deluxe Twin 3", "max_guests": 2, "count": 63},
-    {"code": "DK", "name": "Deluxe King", "max_guests": 2, "count": 12},
-    {"code": "DK2", "name": "Deluxe King 2", "max_guests": 2, "count": 19},
-    {"code": "JST", "name": "Junior Suite Twin", "max_guests": 4, "count": 21},
-    {"code": "JSK", "name": "Junior Suite King", "max_guests": 4, "count": 20},
-    {"code": "GS", "name": "Grand Suite", "max_guests": 4, "count": 21},
+    {"code": "DISABLED", "name": "Disabled", "max_guests": 2},
+    {"code": "PK", "name": "Premium King", "max_guests": 2},
+    {"code": "PK2", "name": "Premium King 2", "max_guests": 2},
+    {"code": "PT", "name": "Premium Twin", "max_guests": 2},
+    {"code": "DT", "name": "Deluxe Twin", "max_guests": 2},
+    {"code": "DT2", "name": "Deluxe Twin 2", "max_guests": 2},
+    {"code": "DT3", "name": "Deluxe Twin 3", "max_guests": 2},
+    {"code": "DK", "name": "Deluxe King", "max_guests": 2},
+    {"code": "DK2", "name": "Deluxe King 2", "max_guests": 2},
+    {"code": "JST", "name": "Junior Suite Twin", "max_guests": 4},
+    {"code": "JSK", "name": "Junior Suite King", "max_guests": 4},
+    {"code": "GS", "name": "Grand Suite", "max_guests": 4},
 ]
+
+ROOM_TYPE_IDS = {def_["code"]: index + 1 for index, def_ in enumerate(ROOM_TYPE_DEFS)}
 
 ROOM_TYPES_SEED = [
     {
-        "id": index + 1,
+        "id": ROOM_TYPE_IDS[room_type["code"]],
         "code": room_type["code"],
         "name": room_type["name"],
         "max_guests": room_type["max_guests"],
         "description": None,
     }
-    for index, room_type in enumerate(ROOM_TYPE_DEFS)
+    for room_type in ROOM_TYPE_DEFS
 ]
 
-ROOMS_PER_FLOOR = 10
+# (code, floor, count) — mỗi dòng là 1 block phòng liền mạch trên 1 tầng. Deluxe Twin
+# (120 phòng) tách thành 2 block (tầng 4 + tầng 5) vì 1 tầng tối đa 99 phòng (2 chữ số).
+ROOM_BLOCKS = [
+    ("DISABLED", 1, 7),
+    ("PK2", 2, 21),
+    ("PT", 3, 21),
+    ("DT", 4, 99),
+    ("DT", 5, 21),
+    ("DT2", 6, 19),
+    ("DT3", 7, 63),
+    ("DK", 8, 12),
+    ("DK2", 9, 19),
+    ("PK", 10, 21),
+    ("JST", 11, 21),
+    ("JSK", 12, 20),
+    ("GS", 13, 21),
+]
 
 
 def _generate_rooms_seed() -> list[dict]:
     rooms: list[dict] = []
-    floor = 1
-    for index, room_type in enumerate(ROOM_TYPE_DEFS):
-        room_type_id = index + 1
-        remaining = room_type["count"]
-        while remaining > 0:
-            rooms_in_floor = min(ROOMS_PER_FLOOR, remaining)
-            for position in range(1, rooms_in_floor + 1):
-                rooms.append(
-                    {
-                        "room_number": f"{floor}{position:02d}",
-                        "room_type_id": room_type_id,
-                        "floor": floor,
-                    }
-                )
-            remaining -= rooms_in_floor
-            floor += 1
+    for code, floor, count in ROOM_BLOCKS:
+        room_type_id = ROOM_TYPE_IDS[code]
+        for position in range(1, count + 1):
+            rooms.append(
+                {
+                    "room_number": f"{floor}{position:02d}",
+                    "room_type_id": room_type_id,
+                    "floor": floor,
+                }
+            )
     return rooms
 
 

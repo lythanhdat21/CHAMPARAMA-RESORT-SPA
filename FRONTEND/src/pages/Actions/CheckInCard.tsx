@@ -4,29 +4,39 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { checkIn } from "@/api/actionsApi";
 import type { ApiErrorBody } from "@/types/api";
+import type { CheckInResponseData } from "@/types/actions";
 
 // Theo seed thật trong DB (BACKEND/opera-bridge/README.md mục "Dữ liệu mẫu") — mỗi loại phòng
 // kèm room_number của phòng đầu tiên thuộc loại đó, để chọn Room Name là tự điền đúng Room Number.
 const ROOM_TYPE_OPTIONS = [
   { name: "Disabled", roomNumber: "101" },
-  { name: "Premium King", roomNumber: "201" },
-  { name: "Premium King 2", roomNumber: "501" },
-  { name: "Premium Twin", roomNumber: "801" },
-  { name: "Deluxe Twin", roomNumber: "1101" },
-  { name: "Deluxe Twin 2", roomNumber: "2301" },
-  { name: "Deluxe Twin 3", roomNumber: "2501" },
-  { name: "Deluxe King", roomNumber: "3201" },
-  { name: "Deluxe King 2", roomNumber: "3401" },
-  { name: "Junior Suite Twin", roomNumber: "3601" },
-  { name: "Junior Suite King", roomNumber: "3901" },
-  { name: "Grand Suite", roomNumber: "4101" },
+  { name: "Premium King 2", roomNumber: "201" },
+  { name: "Premium Twin", roomNumber: "301" },
+  { name: "Deluxe Twin", roomNumber: "401" },
+  { name: "Deluxe Twin 2", roomNumber: "601" },
+  { name: "Deluxe Twin 3", roomNumber: "701" },
+  { name: "Deluxe King", roomNumber: "801" },
+  { name: "Deluxe King 2", roomNumber: "901" },
+  { name: "Premium King", roomNumber: "1001" },
+  { name: "Junior Suite Twin", roomNumber: "1101" },
+  { name: "Junior Suite King", roomNumber: "1201" },
+  { name: "Grand Suite", roomNumber: "1301" },
 ];
 
+const DEFAULT_ROOM_TYPE =
+  ROOM_TYPE_OPTIONS.find((o) => o.name === "Premium King") ?? ROOM_TYPE_OPTIONS[0];
+
 export default function CheckInCard() {
-  const [roomNumber, setRoomNumber] = useState(ROOM_TYPE_OPTIONS[1].roomNumber);
-  const [roomName, setRoomName] = useState(ROOM_TYPE_OPTIONS[1].name);
+  const [roomNumber, setRoomNumber] = useState(DEFAULT_ROOM_TYPE.roomNumber);
+  const [roomName, setRoomName] = useState(DEFAULT_ROOM_TYPE.name);
   const [username, setUsername] = useState("Tony Lee");
   const [gender, setGender] = useState<"Male" | "Female">("Male");
   const [phoneNumber, setPhoneNumber] = useState("0123456789");
@@ -34,9 +44,11 @@ export default function CheckInCard() {
   const [arrivalDate, setArrivalDate] = useState("2026-06-25");
   const [departureDate, setDepartureDate] = useState("2026-06-30");
   const [submitting, setSubmitting] = useState(false);
+  const [lastCheckIn, setLastCheckIn] = useState<CheckInResponseData | null>(null);
 
   const handleCheckIn = async () => {
     setSubmitting(true);
+    setLastCheckIn(null);
     try {
       const res = await checkIn({
         room_number: roomNumber,
@@ -49,6 +61,7 @@ export default function CheckInCard() {
         expected_departure_date: departureDate,
       });
       console.log("[Check-in] success:", res.data);
+      setLastCheckIn(res.data);
     } catch (err) {
       if (isAxiosError<ApiErrorBody>(err)) {
         console.error("[Check-in] error:", err.response?.data ?? err);
@@ -64,6 +77,10 @@ export default function CheckInCard() {
     <Card>
       <CardHeader>
         <CardTitle>Check in</CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Data is fetched/written via the Opera Bridge backend — Endpoint:{" "}
+          <code className="font-mono">POST /api/stays/check-in</code>
+        </p>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
@@ -96,17 +113,18 @@ export default function CheckInCard() {
               ))}
             </select>
             <p className="text-xs text-muted-foreground">
-              Chọn loại phòng sẽ tự điền Room Number của phòng đầu tiên thuộc loại đó.
+              Selecting a room type will auto-fill the Room Number of the first room of that
+              type.
             </p>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1 col-span-2">
-            <Label htmlFor="ci-username">Tên khách</Label>
+            <Label htmlFor="ci-username">Guest name</Label>
             <Input id="ci-username" value={username} onChange={(e) => setUsername(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="ci-gender">Giới tính</Label>
+            <Label htmlFor="ci-gender">Gender</Label>
             <select
               id="ci-gender"
               value={gender}
@@ -119,7 +137,7 @@ export default function CheckInCard() {
           </div>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="ci-phone">Số điện thoại khách</Label>
+          <Label htmlFor="ci-phone">Guest phone number</Label>
           <Input
             id="ci-phone"
             value={phoneNumber}
@@ -128,7 +146,7 @@ export default function CheckInCard() {
         </div>
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1">
-            <Label htmlFor="ci-guests">Số khách</Label>
+            <Label htmlFor="ci-guests">Number of guests</Label>
             <Input
               id="ci-guests"
               value={numberOfGuests}
@@ -136,7 +154,7 @@ export default function CheckInCard() {
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="ci-arrival">Ngày đến</Label>
+            <Label htmlFor="ci-arrival">Arrival date</Label>
             <Input
               id="ci-arrival"
               type="date"
@@ -145,7 +163,7 @@ export default function CheckInCard() {
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="ci-departure">Ngày đi</Label>
+            <Label htmlFor="ci-departure">Departure date</Label>
             <Input
               id="ci-departure"
               type="date"
@@ -155,9 +173,46 @@ export default function CheckInCard() {
           </div>
         </div>
         <Button onClick={handleCheckIn} disabled={submitting} className="w-full">
-          {submitting ? "Đang xử lý..." : "Check in"}
+          {submitting ? "Processing..." : "Check in"}
         </Button>
       </CardContent>
+      <Dialog
+        open={lastCheckIn !== null}
+        onOpenChange={(open) => {
+          if (!open) setLastCheckIn(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="sr-only">Check-in Result</DialogTitle>
+          </DialogHeader>
+          {lastCheckIn && (
+            <div className="space-y-1 text-sm">
+              <p className="font-bold italic text-blue-600 dark:text-blue-400">
+                Data is fetched/written via the Opera Bridge backend
+              </p>
+              <p className="font-bold italic text-blue-600 dark:text-blue-400">
+                Endpoint: <code className="font-mono">/api/stays/check-in</code>
+              </p>
+              <p>
+                <span className="font-medium">Guest name:</span> {lastCheckIn.username}
+              </p>
+              <p>
+                <span className="font-medium">Gender:</span> {lastCheckIn.gender}
+              </p>
+              <p>
+                <span className="font-medium">Room name:</span> {lastCheckIn.room_name}
+              </p>
+              <p>
+                <span className="font-medium">Room number:</span> {lastCheckIn.room_number}
+              </p>
+              <p className="pt-1 font-bold text-green-700 dark:text-green-400">
+                Check-in successful
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

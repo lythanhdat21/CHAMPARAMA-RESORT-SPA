@@ -55,16 +55,37 @@ class MqttClient:
         if settings.mqtt_username:
             client.username_pw_set(settings.mqtt_username, settings.mqtt_password)
         client.on_connect = self._on_connect
+        client.on_disconnect = self._on_disconnect
         client.on_message = self._on_message
-        client.connect(settings.mqtt_broker_host, settings.mqtt_broker_port)
-        client.loop_start()
-        self._client = client
+        client.reconnect_delay_set(min_delay=1, max_delay=30)
+        try:
+            # connect_async (không phải connect()) để không block/raise lúc app startup
+            # nếu broker không tới được — paho-mqtt tự retry trong loop thread phía sau.
+            client.connect_async(settings.mqtt_broker_host, settings.mqtt_broker_port)
+            client.loop_start()
+            self._client = client
+        except (OSError, ValueError) as exc:
+            logger.warning(
+                "Không khởi tạo được kết nối MQTT broker %s:%s (%s) — sẽ tiếp tục chạy"
+                " backend không có MQTT, kiểm tra lại MQTT_BROKER_HOST/PORT trong .env.",
+                settings.mqtt_broker_host,
+                settings.mqtt_broker_port,
+                exc,
+            )
 
     def disconnect(self) -> None:
         if self._client is not None:
             self._client.loop_stop()
             self._client.disconnect()
             self._client = None
+
+    def _on_disconnect(self, client: "mqtt.Client", userdata: Any, rc: int) -> None:
+        logger.warning(
+            "Mất kết nối MQTT broker %s:%s (rc=%s) — paho-mqtt sẽ tự retry trong nền.",
+            settings.mqtt_broker_host,
+            settings.mqtt_broker_port,
+            rc,
+        )
 
     def _on_connect(self, client: "mqtt.Client", userdata: Any, flags: Any, rc: int) -> None:
         if rc != 0:

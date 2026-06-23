@@ -33,33 +33,35 @@ uvicorn app.main:app --reload --app-dir src
 
 ## Dữ liệu mẫu (seed sẵn trong migration `001_initial_schema`)
 
-12 loại phòng, tổng **365 phòng** — theo bảng số lượng trong
+12 loại phòng, tổng **365 phòng** — số lượng theo bảng trong
 [`SKILLS/FILES/Tên phòng và số phòng.jpg`](../SKILLS/FILES/Tên%20phòng%20và%20số%20phòng.jpg).
 Ảnh chỉ cho số lượng phòng theo loại, **không cho số phòng/tầng cụ thể**, nên `room_number`/`floor`
-dưới đây là quy ước tự đặt trong migration: mỗi tầng tối đa 10 phòng, `room_number = "{tầng}{vị trí
-trong tầng:02d}"`, các loại phòng xếp tầng liên tiếp theo đúng thứ tự trong ảnh. Cần thay lại seed
-này khi có sơ đồ tầng thật, hoặc lấy qua RCU Device List (xem mục MQTT dưới đây).
+dưới đây là quy ước tự đặt theo yêu cầu user (2026-06-23): **Premium King cố định 1001–1021**
+(tầng 10), các loại còn lại xếp vào các tầng còn trống sao cho liền mạch, không chồng số (mỗi
+tầng tối đa 99 phòng — riêng Deluxe Twin 120 phòng phải tách 2 tầng). Cần thay lại seed này khi
+có sơ đồ tầng thật, hoặc lấy qua RCU Device List (xem mục MQTT dưới đây).
 
-| room_type code | name | max_guests | số lượng | room_number đầu | room_number cuối |
-|---|---|---|---|---|---|
-| DISABLED | Disabled | 2 | 7 | 101 | 107 |
-| PK | Premium King | 2 | 21 | 201 | 401 |
-| PK2 | Premium King 2 | 2 | 21 | 501 | 701 |
-| PT | Premium Twin | 2 | 21 | 801 | 1001 |
-| DT | Deluxe Twin | 2 | 120 | 1101 | 2210 |
-| DT2 | Deluxe Twin 2 | 2 | 19 | 2301 | 2409 |
-| DT3 | Deluxe Twin 3 | 2 | 63 | 2501 | 3103 |
-| DK | Deluxe King | 2 | 12 | 3201 | 3302 |
-| DK2 | Deluxe King 2 | 2 | 19 | 3401 | 3509 |
-| JST | Junior Suite Twin | 4 | 21 | 3601 | 3801 |
-| JSK | Junior Suite King | 4 | 20 | 3901 | 4010 |
-| GS | Grand Suite | 4 | 21 | 4101 | 4301 |
+| room_type code | name | max_guests | tầng | số lượng | room_number đầu | room_number cuối |
+|---|---|---|---|---|---|---|
+| DISABLED | Disabled | 2 | 1 | 7 | 101 | 107 |
+| PK2 | Premium King 2 | 2 | 2 | 21 | 201 | 221 |
+| PT | Premium Twin | 2 | 3 | 21 | 301 | 321 |
+| DT | Deluxe Twin | 2 | 4–5 | 120 | 401 | 521 |
+| DT2 | Deluxe Twin 2 | 2 | 6 | 19 | 601 | 619 |
+| DT3 | Deluxe Twin 3 | 2 | 7 | 63 | 701 | 763 |
+| DK | Deluxe King | 2 | 8 | 12 | 801 | 812 |
+| DK2 | Deluxe King 2 | 2 | 9 | 19 | 901 | 919 |
+| **PK** | **Premium King** | 2 | **10** | 21 | **1001** | **1021** |
+| JST | Junior Suite Twin | 4 | 11 | 21 | 1101 | 1121 |
+| JSK | Junior Suite King | 4 | 12 | 20 | 1201 | 1220 |
+| GS | Grand Suite | 4 | 13 | 21 | 1301 | 1321 |
 
 `room_id` (số) là khoá nội bộ, **không xuất hiện trong bất kỳ API request/response** —
 mọi endpoint dùng `room_number` (string) làm định danh phòng.
 
-> ⚠️ Số phòng đã đổi hoàn toàn so với bản trước (`11`, `205`, `403`...). Postman collection đã
-> được cập nhật sang phòng `201` (Premium King).
+> ⚠️ Số phòng đã đổi 2 lần so với bản gốc (`11`, `205`, `403`...). Lần gần nhất (2026-06-23):
+> Premium King chuyển từ `201` sang `1001`–`1021` theo yêu cầu user. Postman collection và
+> default Room Number trên frontend đã cập nhật khớp.
 
 ## Luồng demo
 
@@ -116,6 +118,10 @@ Endpoint test (chỉ `RECEPTIONIST`):
 Vì publish/subscribe MQTT là bất đồng bộ (không phải request/response trực tiếp), các API `GET`
 trên chỉ đọc lại cache trong RAM từ message nhận được gần nhất — không chờ phản hồi đồng bộ.
 
+Kết nối broker dùng `connect_async()` (không block, không làm crash app nếu broker không tới
+được lúc khởi động) + tự retry nền (`reconnect_delay_set`, 1s → tối đa 30s). Nếu mất kết nối,
+backend vẫn chạy bình thường, chỉ log warning (`docker compose logs api -f` để xem).
+
 **Giả định/đơn giản hoá vì chưa nối RCU thật:**
 - `roomNo` trong message MQTT = trực tiếp `room_number` của hệ thống (protocol gốc dùng định dạng
   building_floor_room_subroom như `A_5F_8529_2`, nhưng schema hiện tại không có building/sub-room).
@@ -137,8 +143,8 @@ Collection gồm: register 2 user (Receptionist + Customer), login (tự lưu to
   build khi bước vào giai đoạn tích hợp OPERA Cloud thật (bản code cũ có các phần này đã bị xoá,
   xem [`WORK_LOG.md`](../SKILLS/WORK_LOG.md) mục 11).
 - Lớp MQTT (xem mục "Tích hợp MQTT" trên) đã verify end-to-end với Mosquitto local qua Docker
-  (publish đúng topic/payload, subscribe nhận + cache đúng) nhưng **chưa test với RCU thật**,
-  chưa có cơ chế retry khi mất kết nối, chưa map `roomNo` dạng building/floor/room/sub-room
-  như protocol gốc.
+  (publish đúng topic/payload, subscribe nhận + cache đúng), kết nối bất đồng bộ + tự retry khi
+  mất/không kết nối được broker (không làm crash backend) — nhưng **chưa test với RCU thật**,
+  chưa map `roomNo` dạng building/floor/room/sub-room như protocol gốc.
 - Sau Check-out, `rooms.status` chuyển thành `Cleaning` nhưng chưa có endpoint nào đưa phòng
   về lại `Vacant` — tài liệu đặc tả chưa định nghĩa endpoint này.

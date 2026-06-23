@@ -106,7 +106,7 @@
       }
     },
     {
-      "name": "4. Check-in - Room 201",
+      "name": "4. Check-in - Room 1001",
       "request": {
         "method": "POST",
         "header": [
@@ -116,12 +116,12 @@
         "url": "{{base_url}}/api/stays/check-in",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"room_number\": \"201\",\n  \"room_name\": \"Premium King\",\n  \"username\": \"Tony Lee\",\n  \"gender\": \"Male\",\n  \"phone_number\": \"0123456789\",\n  \"number_of_guests\": 2,\n  \"expected_arrival_date\": \"2026-06-25\",\n  \"expected_departure_date\": \"2026-06-30\"\n}"
+          "raw": "{\n  \"room_number\": \"1001\",\n  \"room_name\": \"Premium King\",\n  \"username\": \"Tony Lee\",\n  \"gender\": \"Male\",\n  \"phone_number\": \"0123456789\",\n  \"number_of_guests\": 2,\n  \"expected_arrival_date\": \"2026-06-25\",\n  \"expected_departure_date\": \"2026-06-30\"\n}"
         }
       }
     },
     {
-      "name": "4b. Check-in - Room 201 (Customer, kỳ vọng 403)",
+      "name": "4b. Check-in - Room 1001 (Customer, kỳ vọng 403)",
       "request": {
         "method": "POST",
         "header": [
@@ -131,12 +131,12 @@
         "url": "{{base_url}}/api/stays/check-in",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"room_number\": \"201\",\n  \"room_name\": \"Premium King\",\n  \"username\": \"Tony Lee\",\n  \"gender\": \"Male\",\n  \"phone_number\": \"0123456789\",\n  \"number_of_guests\": 2,\n  \"expected_arrival_date\": \"2026-06-25\",\n  \"expected_departure_date\": \"2026-06-30\"\n}"
+          "raw": "{\n  \"room_number\": \"1001\",\n  \"room_name\": \"Premium King\",\n  \"username\": \"Tony Lee\",\n  \"gender\": \"Male\",\n  \"phone_number\": \"0123456789\",\n  \"number_of_guests\": 2,\n  \"expected_arrival_date\": \"2026-06-25\",\n  \"expected_departure_date\": \"2026-06-30\"\n}"
         }
       }
     },
     {
-      "name": "5. Check-out - Room 201",
+      "name": "5. Check-out - Room 1001",
       "request": {
         "method": "POST",
         "header": [
@@ -146,12 +146,12 @@
         "url": "{{base_url}}/api/stays/check-out",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"room_number\": \"201\"\n}"
+          "raw": "{\n  \"room_number\": \"1001\"\n}"
         }
       }
     },
     {
-      "name": "5b. Check-out - Room 201 (Customer, kỳ vọng 403)",
+      "name": "5b. Check-out - Room 1001 (Customer, kỳ vọng 403)",
       "request": {
         "method": "POST",
         "header": [
@@ -161,19 +161,19 @@
         "url": "{{base_url}}/api/stays/check-out",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"room_number\": \"201\"\n}"
+          "raw": "{\n  \"room_number\": \"1001\"\n}"
         }
       }
     },
     {
-      "name": "6. Do Not Disturb ON - Room 201",
+      "name": "6. Do Not Disturb ON - Room 1001",
       "request": {
         "method": "PATCH",
         "header": [
           { "key": "Content-Type", "value": "application/json" },
           { "key": "Authorization", "value": "Bearer {{token}}" }
         ],
-        "url": "{{base_url}}/api/rooms/201/do-not-disturb",
+        "url": "{{base_url}}/api/rooms/1001/do-not-disturb",
         "body": {
           "mode": "raw",
           "raw": "{\n  \"status\": true\n}"
@@ -181,14 +181,14 @@
       }
     },
     {
-      "name": "6b. Do Not Disturb OFF - Room 201 (Customer)",
+      "name": "6b. Do Not Disturb OFF - Room 1001 (Customer)",
       "request": {
         "method": "PATCH",
         "header": [
           { "key": "Content-Type", "value": "application/json" },
           { "key": "Authorization", "value": "Bearer {{customer_token}}" }
         ],
-        "url": "{{base_url}}/api/rooms/201/do-not-disturb",
+        "url": "{{base_url}}/api/rooms/1001/do-not-disturb",
         "body": {
           "mode": "raw",
           "raw": "{\n  \"status\": false\n}"
@@ -196,35 +196,35 @@
       }
     },
     {
-      "name": "7. Make up room - Room 201 (Customer)",
+      "name": "7. Make up room - Room 1001 (Customer)",
       "request": {
         "method": "POST",
         "header": [{ "key": "Authorization", "value": "Bearer {{customer_token}}" }],
-        "url": "{{base_url}}/api/rooms/201/make-up-room"
+        "url": "{{base_url}}/api/rooms/1001/make-up-room"
       }
     },
     {
-      "name": "7b. Make up room - Room 201 (Receptionist, kỳ vọng 403)",
+      "name": "7b. Make up room - Room 1001 (Receptionist, kỳ vọng 403)",
       "request": {
         "method": "POST",
         "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-        "url": "{{base_url}}/api/rooms/201/make-up-room"
+        "url": "{{base_url}}/api/rooms/1001/make-up-room"
       }
     },
     {
-      "name": "8. Housekeeping hoàn thành make-up-room - Room 201 (Receptionist)",
+      "name": "8. Housekeeping hoàn thành make-up-room - Room 1001 (Receptionist)",
       "request": {
         "method": "PATCH",
         "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-        "url": "{{base_url}}/api/rooms/201/service"
+        "url": "{{base_url}}/api/rooms/1001/service"
       }
     },
     {
-      "name": "8b. Housekeeping hoàn thành - Room 201 (Customer, kỳ vọng 403)",
+      "name": "8b. Housekeeping hoàn thành - Room 1001 (Customer, kỳ vọng 403)",
       "request": {
         "method": "PATCH",
         "header": [{ "key": "Authorization", "value": "Bearer {{customer_token}}" }],
-        "url": "{{base_url}}/api/rooms/201/service"
+        "url": "{{base_url}}/api/rooms/1001/service"
       }
     }
   ]

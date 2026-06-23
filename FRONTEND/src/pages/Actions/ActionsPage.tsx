@@ -27,16 +27,17 @@ export default function ActionsPage() {
       <div className="mx-auto max-w-3xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold">Xin chào, {auth.username}</h1>
-            <p className="text-sm text-slate-500">Vai trò: {auth.role}</p>
+            <h1 className="text-xl font-semibold">Welcome, {auth.username}</h1>
+            <p className="text-sm text-slate-500">Role: {auth.role}</p>
           </div>
           <Button variant="outline" onClick={handleLogout}>
-            Đăng xuất
+            Logout
           </Button>
         </div>
 
         <p className="mb-4 text-sm text-slate-500">
-          Mỗi nút sẽ gọi API tương ứng và in kết quả ra DevTools Console (F12 → tab Console).
+          Each button calls the corresponding API and logs the result to DevTools Console
+          (F12 → Console tab).
         </p>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
